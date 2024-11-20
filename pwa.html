@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Now - Simple Weather Dashboard</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Get instant weather updates with our minimal weather dashboard">
+    <meta name="keywords" content="weather, forecast, temperature, minimal weather app">
+    <meta name="author" content="Weather Now">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Weather Now - Simple Weather Dashboard">
+    <meta property="og:description" content="Get instant weather updates with our minimal weather dashboard">
+    <meta property="og:type" content="website">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#2196f3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Weather Now">
+    
+    <!-- Inline Manifest Data -->
+    <link rel="manifest" href="#manifest" id="manifest-placeholder">
+    <script>
+        // Dynamic manifest generation for GitHub Pages
+        const manifestData = {
+            "name": "Weather Now",
+            "short_name": "Weather",
+            "start_url": "./",
+            "scope": "./",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#2196f3",
+            "icons": [
+                {
+                    "src": "/api/placeholder/192/192",
+                    "sizes": "192x192",
+                    "type": "image/png",
+                    "purpose": "any maskable"
+                },
+                {
+                    "src": "/api/placeholder/512/512",
+                    "sizes": "512x512",
+                    "type": "image/png",
+                    "purpose": "any maskable"
+                }
+            ]
+        };
+
+        // Create and inject manifest
+        const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        document.querySelector('#manifest-placeholder').href = manifestURL;
+    </script>
+
+    <!-- Inline Styles -->
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .weather-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .weather-icon {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 10px;
+        }
+        .temperature {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2196f3;
+        }
+        .location {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .details {
+            color: #666;
+            margin-top: 10px;
+        }
+        #installButton {
+            display: none;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #offlineMessage {
+            display: none;
+            background: #4caf50;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="offlineMessage">App is ready for offline use!</div>
+        <button id="installButton">Install Weather App</button>
+        <div class="weather-card">
+            <img src="/api/placeholder/64/64" alt="Weather Icon" class="weather-icon">
+            <div class="location">New York, NY</div>
+            <div class="temperature">72°F</div>
+            <div class="details">
+                Partly Cloudy
+                <br>
+                Humidity: 65%
+                <br>
+                Wind: 5 mph
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA Installation and Service Worker Registration -->
+    <script>
+        let deferredPrompt;
+        const installButton = document.getElementById('installButton');
+        const offlineMessage = document.getElementById('offlineMessage');
+
+        // Handle PWA installation
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show the install button
+            installButton.style.display = 'block';
+        });
+
+        installButton.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                // We no longer need the prompt
+                deferredPrompt = null;
+                // Hide the install button
+                installButton.style.display = 'none';
+            }
+        });
+
+        // Service Worker with better offline support
+        if ('serviceWorker' in navigator) {
+            const swContent = `
+                const CACHE_NAME = 'weather-app-v1';
+                const urlsToCache = [
+                    './',
+                    './index.html',
+                    '/api/placeholder/64/64',
+                    '/api/placeholder/192/192',
+                    '/api/placeholder/512/512'
+                ];
+
+                self.addEventListener('install', (event) => {
+                    event.waitUntil(
+                        caches.open(CACHE_NAME)
+                            .then((cache) => {
+                                console.log('Opened cache');
+                                return cache.addAll(urlsToCache);
+                            })
+                            .then(() => {
+                                self.skipWaiting();
+                            })
+                    );
+                });
+
+                self.addEventListener('activate', (event) => {
+                    event.waitUntil(
+                        caches.keys().then((cacheNames) => {
+                            return Promise.all(
+                                cacheNames.map((cacheName) => {
+                                    if (cacheName !== CACHE_NAME) {
+                                        return caches.delete(cacheName);
+                                    }
+                                })
+                            );
+                        })
+                    );
+                });
+
+                self.addEventListener('fetch', (event) => {
+                    event.respondWith(
+                        caches.match(event.request)
+                            .then((response) => {
+                                if (response) {
+                                    return response;
+                                }
+                                return fetch(event.request)
+                                    .then((response) => {
+                                        if (!response || response.status !== 200 || response.type !== 'basic') {
+                                            return response;
+                                        }
+                                        const responseToCache = response.clone();
+                                        caches.open(CACHE_NAME)
+                                            .then((cache) => {
+                                                cache.put(event.request, responseToCache);
+                                            });
+                                        return response;
+                                    });
+                            })
+                    );
+                });
+
+                // Notify the page when offline content is ready
+                self.addEventListener('activate', (event) => {
+                    clients.matchAll().then(clients => {
+                        clients.forEach(client => {
+                            client.postMessage({ type: 'OFFLINE_READY' });
+                        });
+                    });
+                });
+            `;
+
+            // Create and register the service worker
+            const blob = new Blob([swContent], { type: 'text/javascript' });
+            const swURL = URL.createObjectURL(blob);
+            
+            navigator.serviceWorker.register(swURL)
+                .then((registration) => {
+                    console.log('ServiceWorker registration successful');
+                })
+                .catch((err) => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+
+            // Listen for messages from service worker
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'OFFLINE_READY') {
+                    offlineMessage.style.display = 'block';
+                    setTimeout(() => {
+                        offlineMessage.style.display = 'none';
+                    }, 3000);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
